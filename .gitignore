@@ -1,0 +1,16 @@
+﻿bin/
+obj/
+*.user
+*.suo
+*.userprefs
+*.lock.json
+*.cache
+.vs/
+*.log
+*.tmp
+*.pid
+*.seed
+*.pid.lock
+.env
+*.env
+.DS_Store
