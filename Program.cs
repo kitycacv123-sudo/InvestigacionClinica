@@ -3,56 +3,68 @@ using InvestigacionClinica.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 🔧 Forzar puerto para Railway
-builder.WebHost.UseUrls("http://0.0.0.0:8080");
+// Puerto dinámico para Railway
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
-// Agregar servicios base
 builder.Services.AddHttpClient();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // --------------------------------------------------------------
-// 🗄️ CONFIGURACIÓN DE BASE DE DATOS (con soporte para Railway)
+// OBTENER CADENA DE CONEXIÓN (con diagnóstico)
 // --------------------------------------------------------------
 string? connectionString = null;
 
-// 1. En Railway, la base de datos se conecta mediante DATABASE_URL
-if (string.IsNullOrEmpty(connectionString))
-    connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
-
-// 2. También podría estar en otra variable manual (si la definiste)
-if (string.IsNullOrEmpty(connectionString))
+// Variables de entorno que Railway usa
+var envConnection = Environment.GetEnvironmentVariable("DATABASE_URL");
+if (!string.IsNullOrEmpty(envConnection))
+{
+    connectionString = envConnection;
+    Console.WriteLine("✅ DATABASE_URL encontrada en entorno.");
+}
+else
+{
+    // Fallback: puede estar con otro nombre
     connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__InvestigacionClinicaContext");
+    if (!string.IsNullOrEmpty(connectionString))
+        Console.WriteLine("✅ ConnectionStrings__... encontrada.");
+}
 
-// 3. Si no hay variables de entorno (modo desarrollo local), usa appsettings.json
+// Si no hay ninguna variable, intentamos con appsettings.json (solo local)
 if (string.IsNullOrEmpty(connectionString))
+{
     connectionString = builder.Configuration.GetConnectionString("InvestigacionClinicaContext");
+    if (!string.IsNullOrEmpty(connectionString))
+        Console.WriteLine("✅ Usando cadena desde appsettings.json (entorno local).");
+}
 
-// Si aún así no hay cadena, lanzamos error claro
+// Si después de todo sigue vacía, lanzamos error claro con instrucciones
 if (string.IsNullOrEmpty(connectionString))
-    throw new InvalidOperationException("No se encontró cadena de conexión para la base de datos.");
+{
+    Console.WriteLine("❌ CRÍTICO: No se encontró cadena de conexión.");
+    Console.WriteLine("   Asegúrate de que en Railway la variable DATABASE_URL esté definida en este servicio.");
+    throw new InvalidOperationException("No se encontró cadena de conexión para la base de datos. Verifica la variable DATABASE_URL en Railway.");
+}
 
 // Registrar DbContext con PostgreSQL
 builder.Services.AddDbContext<InvestigacionClinicaContext>(options =>
     options.UseNpgsql(connectionString));
 
-// --------------------------------------------------------------
 var app = builder.Build();
 
-// 🧩 APLICAR MIGRACIONES AUTOMÁTICAMENTE (crea la BD en Railway)
+// Aplicar migraciones automáticamente
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<InvestigacionClinicaContext>();
-    dbContext.Database.Migrate();  // Crea o actualiza la base de datos
+    dbContext.Database.Migrate();
+    Console.WriteLine("✅ Migraciones aplicadas correctamente.");
 }
 
-// Configurar Swagger (activo siempre para que puedas probar)
+// Swagger
 app.UseSwagger();
 app.UseSwaggerUI();
-
-// Nota: No uses app.UseHttpsRedirection() porque Railway ya maneja HTTPS.
-// app.UseHttpsRedirection();
 
 app.UseAuthorization();
 app.MapControllers();
