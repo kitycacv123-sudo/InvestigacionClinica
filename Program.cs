@@ -18,26 +18,22 @@ builder.Services.AddSwaggerGen();
 string? connectionString = null;
 
 // 1. Intentar con la variable manual que creamos (Prioridad)
-var customConn = Environment.GetEnvironmentVariable("CONNECTION_STRING");
-// 2. Intentar con la variable estándar de Railway
-var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-// 3. Intentar con el formato de ConnectionStrings de .NET
-var dotnetConn = Environment.GetEnvironmentVariable("ConnectionStrings__InvestigacionClinicaContext");
+// Reemplaza la sección de obtención de cadena por esta:
+var customConn = Environment.GetEnvironmentVariable("CONNECTION_STRING")
+                 ?? builder.Configuration["CONNECTION_STRING"];
+
+var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
+            ?? builder.Configuration["DATABASE_URL"];
 
 if (!string.IsNullOrEmpty(customConn))
 {
     connectionString = customConn;
-    Console.WriteLine("✅ Usando: CONNECTION_STRING encontrada.");
+    Console.WriteLine("✅ CONNECTION_STRING detectada.");
 }
 else if (!string.IsNullOrEmpty(dbUrl))
 {
     connectionString = dbUrl;
-    Console.WriteLine("✅ Usando: DATABASE_URL encontrada.");
-}
-else if (!string.IsNullOrEmpty(dotnetConn))
-{
-    connectionString = dotnetConn;
-    Console.WriteLine("✅ Usando: ConnectionStrings__ encontrada.");
+    Console.WriteLine("✅ DATABASE_URL detectada.");
 }
 else
 {
