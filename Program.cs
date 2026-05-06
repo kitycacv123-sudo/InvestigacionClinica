@@ -7,23 +7,32 @@ var builder = WebApplication.CreateBuilder(args);
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
+// --- 1. CONFIGURACIÓN DE CORS ---
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowRailwayFront", policy =>
+    {
+        policy.AllowAnyOrigin() // En desarrollo puedes usar esto
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+
+        /* 
+           Nota para el futuro: Cuando tengas la URL de tu frontend en Railway, 
+           es mejor cambiar .AllowAnyOrigin() por:
+           .WithOrigins("https://tu-frontend.up.railway.app") 
+        */
+    });
+});
+
 builder.Services.AddHttpClient();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// --------------------------------------------------------------
-// LÓGICA DE CONEXIÓN ROBUSTA
-// --------------------------------------------------------------
+// --- LÓGICA DE CONEXIÓN ROBUSTA (Tu código original) ---
 string? connectionString = null;
-
-// 1. Intentar con la variable manual que creamos (Prioridad)
-// Reemplaza la sección de obtención de cadena por esta:
-var customConn = Environment.GetEnvironmentVariable("CONNECTION_STRING")
-                 ?? builder.Configuration["CONNECTION_STRING"];
-
-var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
-            ?? builder.Configuration["DATABASE_URL"];
+var customConn = Environment.GetEnvironmentVariable("CONNECTION_STRING") ?? builder.Configuration["CONNECTION_STRING"];
+var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL") ?? builder.Configuration["DATABASE_URL"];
 
 if (!string.IsNullOrEmpty(customConn))
 {
@@ -38,18 +47,10 @@ else if (!string.IsNullOrEmpty(dbUrl))
 else
 {
     connectionString = builder.Configuration.GetConnectionString("InvestigacionClinicaContext");
-    if (!string.IsNullOrEmpty(connectionString))
-        Console.WriteLine("✅ Usando: appsettings.json (Local).");
 }
 
-// Validación final antes de configurar el DBContext
 if (string.IsNullOrEmpty(connectionString))
 {
-    Console.WriteLine("❌ ERROR CRÍTICO: No se detectó ninguna variable de configuración en Railway.");
-    Console.WriteLine("Variables actuales detectadas: ");
-    Console.WriteLine($"- CONNECTION_STRING: {(!string.IsNullOrEmpty(customConn) ? "Presente" : "Nula")}");
-    Console.WriteLine($"- DATABASE_URL: {(!string.IsNullOrEmpty(dbUrl) ? "Presente" : "Nula")}");
-
     throw new InvalidOperationException("Falta configuración de DB en Railway.");
 }
 
@@ -58,7 +59,9 @@ builder.Services.AddDbContext<InvestigacionClinicaContext>(options =>
 
 var app = builder.Build();
 
-// Aplicar migraciones automáticamente
+// --- 2. ACTIVAR CORS (Debe ir antes de MapControllers) ---
+app.UseCors("AllowRailwayFront");
+
 using (var scope = app.Services.CreateScope())
 {
     try
