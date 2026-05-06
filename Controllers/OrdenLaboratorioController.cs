@@ -20,6 +20,7 @@ namespace InvestigacionClinica.Controllers
 
         // GET: api/OrdenLaboratorio/ListarExamenes
         // Devuelve la lista de exámenes (estructura original del servicio)
+        // GET: api/OrdenLaboratorio/ListarExamenes
         [HttpGet("ListarExamenes")]
         public async Task<IActionResult> ListarExamenes()
         {
@@ -28,8 +29,10 @@ namespace InvestigacionClinica.Controllers
 
             if (response.IsSuccessStatusCode)
             {
-                var resultado = await response.Content.ReadAsStringAsync();
-                return Ok(resultado);
+                var json = await response.Content.ReadAsStringAsync();
+                // Opcional: deserializar a objeto tipado
+                var examenesWrapper = JsonSerializer.Deserialize<ListaExamenesResponseDTO>(json);
+                return Ok(examenesWrapper); // Devuelve el objeto tipado
             }
 
             var error = await response.Content.ReadAsStringAsync();
@@ -69,11 +72,9 @@ namespace InvestigacionClinica.Controllers
 
             if (response.IsSuccessStatusCode)
             {
-                var resultado = await response.Content.ReadAsStringAsync();
-                // Opcional: deserializar a OrdenExamenDoctorDTO para trabajar con objetos tipados
-                // var data = JsonSerializer.Deserialize<OrdenExamenDoctorDTO>(resultado);
-                // return Ok(data);
-                return Ok(resultado); // O devuelve string JSON directamente
+                var json = await response.Content.ReadAsStringAsync();
+                var data = JsonSerializer.Deserialize<RespuestaOrdenDoctorDTO>(json);
+                return Ok(data); // Devuelve el objeto tipado
             }
 
             var error = await response.Content.ReadAsStringAsync();
