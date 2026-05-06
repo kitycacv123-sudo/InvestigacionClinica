@@ -12,15 +12,11 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowRailwayFront", policy =>
     {
-        policy.AllowAnyOrigin() // En desarrollo puedes usar esto
+        policy.AllowAnyOrigin() 
               .AllowAnyHeader()
               .AllowAnyMethod();
 
-        /* 
-           Nota para el futuro: Cuando tengas la URL de tu frontend en Railway, 
-           es mejor cambiar .AllowAnyOrigin() por:
-           .WithOrigins("https://tu-frontend.up.railway.app") 
-        */
+       
     });
 });
 

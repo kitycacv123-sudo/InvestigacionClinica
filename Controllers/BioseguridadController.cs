@@ -38,13 +38,14 @@ namespace InvestigacionClinica.Controllers
             var error = await response.Content.ReadAsStringAsync();
             return BadRequest($"Error {response.StatusCode}: {error}");
         }
-        [HttpPost("CrearSolicitud")]
-        public async Task<IActionResult> PostSolicitud([FromBody] SolicitudBioseguridadDTO solicitud)
+        [HttpPost("POST/{codigo}/{documento}/{descripcion}")]
+        public async Task<IActionResult> PostSolicitud(string codigo, string documento, string descripcion)
         {
-            
-            var urlCompleta = $"{URL}api/Solicitudes"; // Cambia la ruta según corresponda
+            // Construimos la URL con los parámetros que recibimos en la ruta
+            var urlCompleta = $"{URL}api/Solicitudes/POST/{codigo}/{documento}/{Uri.EscapeDataString(descripcion)}";
 
-            var response = await httpClient.PostAsJsonAsync(urlCompleta, solicitud);
+            // Si el servicio de destino NO espera un JSON en el body, usa PostAsync en lugar de PostAsJsonAsync
+            var response = await httpClient.PostAsync(urlCompleta, null);
 
             if (response.IsSuccessStatusCode)
             {
@@ -55,13 +56,15 @@ namespace InvestigacionClinica.Controllers
             var error = await response.Content.ReadAsStringAsync();
             return BadRequest($"Error {response.StatusCode}: {error}");
         }
-        [HttpPost("AsignarProtocolo")]
-        public async Task<IActionResult> PostAsignacion([FromBody] AsignacionProtocoloDTO asignacion)
+        [HttpPost("{codigoProtocolo}/{codigoSolicitud}/{fechaInicio}/{fechaFin}")]
+        public async Task<IActionResult> PostAsignacion(string codigoProtocolo, string codigoSolicitud, string fechaInicio, string fechaFin)
         {
-            // Ajusta la URL del microservicio. Supongamos que es "api/Asignaciones"
-            var urlCompleta = $"{URL}api/Asignaciones";
+            // Construimos la URL destino usando los parámetros de la ruta
+            // Ejemplo: .../api/SolicitudProtocolos/PRO-001/SOL-450/2026-12-01/2026-12-10
+            var urlCompleta = $"{URL}api/SolicitudProtocolos/{codigoProtocolo}/{codigoSolicitud}/{fechaInicio}/{fechaFin}";
 
-            var response = await httpClient.PostAsJsonAsync(urlCompleta, asignacion);
+            // Como los datos ya van en la URL, enviamos el contenido como null o vacío
+            var response = await httpClient.PostAsync(urlCompleta, null);
 
             if (response.IsSuccessStatusCode)
             {
