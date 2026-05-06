@@ -13,43 +13,50 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // --------------------------------------------------------------
-// OBTENER CADENA DE CONEXIÓN (con diagnóstico)
+// LÓGICA DE CONEXIÓN ROBUSTA
 // --------------------------------------------------------------
+string? connectionString = null;
 
+// 1. Intentar con la variable manual que creamos (Prioridad)
+var customConn = Environment.GetEnvironmentVariable("CONNECTION_STRING");
+// 2. Intentar con la variable estándar de Railway
+var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+// 3. Intentar con el formato de ConnectionStrings de .NET
+var dotnetConn = Environment.GetEnvironmentVariable("ConnectionStrings__InvestigacionClinicaContext");
 
-// Variables de entorno que Railway usa
-// --------------------------------------------------------------
-// OBTENER CADENA DE CONEXIÓN (Actualizado para Railway)
-// --------------------------------------------------------------
-string? connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
-
-if (!string.IsNullOrEmpty(connectionString))
+if (!string.IsNullOrEmpty(customConn))
 {
-    Console.WriteLine("✅ CONNECTION_STRING encontrada en entorno.");
+    connectionString = customConn;
+    Console.WriteLine("✅ Usando: CONNECTION_STRING encontrada.");
+}
+else if (!string.IsNullOrEmpty(dbUrl))
+{
+    connectionString = dbUrl;
+    Console.WriteLine("✅ Usando: DATABASE_URL encontrada.");
+}
+else if (!string.IsNullOrEmpty(dotnetConn))
+{
+    connectionString = dotnetConn;
+    Console.WriteLine("✅ Usando: ConnectionStrings__ encontrada.");
 }
 else
 {
-    // Fallback por si acaso sigue llamándose DATABASE_URL
-    connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
-    if (!string.IsNullOrEmpty(connectionString))
-        Console.WriteLine("✅ DATABASE_URL encontrada.");
-}
-
-// Fallback para local (appsettings.json)
-if (string.IsNullOrEmpty(connectionString))
-{
     connectionString = builder.Configuration.GetConnectionString("InvestigacionClinicaContext");
+    if (!string.IsNullOrEmpty(connectionString))
+        Console.WriteLine("✅ Usando: appsettings.json (Local).");
 }
 
-// Si después de todo sigue vacía, lanzamos error claro con instrucciones
+// Validación final antes de configurar el DBContext
 if (string.IsNullOrEmpty(connectionString))
 {
-    Console.WriteLine("❌ CRÍTICO: No se encontró cadena de conexión.");
-    Console.WriteLine("   Asegúrate de que en Railway la variable DATABASE_URL esté definida en este servicio.");
-    throw new InvalidOperationException("No se encontró cadena de conexión para la base de datos. Verifica la variable DATABASE_URL en Railway.");
+    Console.WriteLine("❌ ERROR CRÍTICO: No se detectó ninguna variable de configuración en Railway.");
+    Console.WriteLine("Variables actuales detectadas: ");
+    Console.WriteLine($"- CONNECTION_STRING: {(!string.IsNullOrEmpty(customConn) ? "Presente" : "Nula")}");
+    Console.WriteLine($"- DATABASE_URL: {(!string.IsNullOrEmpty(dbUrl) ? "Presente" : "Nula")}");
+
+    throw new InvalidOperationException("Falta configuración de DB en Railway.");
 }
 
-// Registrar DbContext con PostgreSQL
 builder.Services.AddDbContext<InvestigacionClinicaContext>(options =>
     options.UseNpgsql(connectionString));
 
@@ -58,16 +65,20 @@ var app = builder.Build();
 // Aplicar migraciones automáticamente
 using (var scope = app.Services.CreateScope())
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<InvestigacionClinicaContext>();
-    dbContext.Database.Migrate();
-    Console.WriteLine("✅ Migraciones aplicadas correctamente.");
+    try
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<InvestigacionClinicaContext>();
+        dbContext.Database.Migrate();
+        Console.WriteLine("✅ Base de datos conectada y migraciones aplicadas.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Error al conectar o migrar: {ex.Message}");
+    }
 }
 
-// Swagger
 app.UseSwagger();
 app.UseSwaggerUI();
-
 app.UseAuthorization();
 app.MapControllers();
-
 app.Run();
