@@ -15,29 +15,30 @@ builder.Services.AddSwaggerGen();
 // --------------------------------------------------------------
 // OBTENER CADENA DE CONEXIÓN (con diagnóstico)
 // --------------------------------------------------------------
-string? connectionString = null;
+
 
 // Variables de entorno que Railway usa
-var envConnection = Environment.GetEnvironmentVariable("DATABASE_URL");
-if (!string.IsNullOrEmpty(envConnection))
+// --------------------------------------------------------------
+// OBTENER CADENA DE CONEXIÓN (Actualizado para Railway)
+// --------------------------------------------------------------
+string? connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
+
+if (!string.IsNullOrEmpty(connectionString))
 {
-    connectionString = envConnection;
-    Console.WriteLine("✅ DATABASE_URL encontrada en entorno.");
+    Console.WriteLine("✅ CONNECTION_STRING encontrada en entorno.");
 }
 else
 {
-    // Fallback: puede estar con otro nombre
-    connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__InvestigacionClinicaContext");
+    // Fallback por si acaso sigue llamándose DATABASE_URL
+    connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
     if (!string.IsNullOrEmpty(connectionString))
-        Console.WriteLine("✅ ConnectionStrings__... encontrada.");
+        Console.WriteLine("✅ DATABASE_URL encontrada.");
 }
 
-// Si no hay ninguna variable, intentamos con appsettings.json (solo local)
+// Fallback para local (appsettings.json)
 if (string.IsNullOrEmpty(connectionString))
 {
     connectionString = builder.Configuration.GetConnectionString("InvestigacionClinicaContext");
-    if (!string.IsNullOrEmpty(connectionString))
-        Console.WriteLine("✅ Usando cadena desde appsettings.json (entorno local).");
 }
 
 // Si después de todo sigue vacía, lanzamos error claro con instrucciones
